@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reactive Widgets Binding Example</title>
+    <style>
+      body:not(:empty) {
+        font-family: sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        /* font-size: 1.5em; */
+      }
+
+      #intro {
+        margin-bottom: 20px;
+        max-width: 60rem;
+        font-size: 1.3em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Reactive Widget Helper Function</h1>
+    <div id="intro">
+      Here is a Reactive Widgets Helper function example using
+      <a href="https://observablehq.com/@d3/histogram/2">D3 histograms</a>. The
+      following are <span class="xAttr"></span> histograms of the cars dataset
+      <div style="display: inline-block" id="sparkHistogram"></div>
+      and which reactive widgets that are synchronized. This means that you can
+      <strong>update the brush</strong> and see how all keep the same selection.
+      The current selection is
+      <span style="font-weight: bold" class="status"></span> (<span
+        class="xAttr"
+      ></span
+      >). You can also <button id="resetBrush">reset the Brush</button>
+    </div>
+    <br />
+    <div id="target"></div>
+    <div class="status"></div>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/reactive-widget"></script> -->
+    <script src="./Histogram.js"></script>
+    <script src="../dist/ReactiveWidget.js"></script>
+
+    <script>
+      const BrushableHistogram = function (
+        data,
+        {
+          value = [],
+          x = (d) => d[0],
+          xLabel = "",
+          width = 600,
+          height = 300,
+          marginBottom = 30,
+          vertical = false,
+        } = {}
+      ) {
+        // ✅ Add here the code that creates your widget
+        let element = Histogram(data, {
+          x,
+          xLabel,
+          width,
+          height,
+          marginBottom,
+          vertical,
+        });
+
+        // 🧰 Enhance your html element with reactive value and event handling
+        let widget = ReactiveWidget(element, { value, showValue });
+
+        // Enhance the Histogram with a brush
+        function brushended(event) {
+          let selection = event.selection;
+          if (!event.sourceEvent || !selection) return;
+
+          const [x0, x1] = selection.map((d) => element._xS.invert(d));
+          widget.setValue(vertical ? [x1, x0] : [x0, x1]);
+        }
+        const brush = (vertical ? d3.brushY() : d3.brushX())
+          .extent([
+            [element._margin.left, element._margin.top],
+            [
+              element._width - element._margin.right,
+              element._height - element._margin.bottom,
+            ],
+          ])
+          .on("brush end", brushended);
+        const gBrush = d3.select(element).append("g").call(brush);
+
+        // 🧰 ShowValue will display the current internalValue brush position
+        function showValue() {
+          // ✅ Add here the code that updates the current interaction
+          const [x0, x1] = widget.value;
+          // Update the brush position
+          gBrush.call(
+            brush.move,
+            x1 > x0 ? (vertical ? [x1, x0] : [x0, x1]).map(element._xS) : null
+          );
+        }
+
+        showValue();
+
+        // 🧰 Finally return the html element
+        return widget;
+      };
+
+      async function runtIt() {
+        const cars = await d3.json(
+          "https://cdn.jsdelivr.net/npm/vega-datasets@2/data/cars.json"
+        );
+        const xAttr = "Horsepower";
+        const myWidget = BrushableHistogram(cars, {
+          x: (d) => d[xAttr],
+          xLabel: xAttr,
+          height: 200,
+          value: [60, 80], // initial position
+        });
+        const bindedHistogram = BrushableHistogram(cars, {
+          x: (d) => d[xAttr],
+          width: 300,
+          height: 60,
+          marginBottom: 18,
+          value: myWidget.value,
+        });
+
+        const showValue = (e) => {
+          console.log("Widget updated. value=", myWidget.value);
+          d3.selectAll(".status").html(
+            `Current Selection [${myWidget.value.map((d) => d.toFixed(2)).join(", ")}]`
+          );
+        };
+        myWidget.addEventListener("input", () => {
+          bindedHistogram.value = myWidget.value;
+          showValue();
+        });
+        bindedHistogram.addEventListener("input", () => {
+          myWidget.value = bindedHistogram.value;
+          showValue();
+        });
+        showValue();
+
+        function resetBrush() {
+          myWidget.value = [];
+          myWidget.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        document
+          .getElementById("resetBrush")
+          .addEventListener("click", resetBrush);
+
+        document.getElementById("target").appendChild(myWidget);
+        document.getElementById("sparkHistogram").appendChild(bindedHistogram);
+
+        d3.selectAll(".xAttr").html(xAttr);
+      }
+
+      runtIt();
+    </script>
+  </body>
+</html>
