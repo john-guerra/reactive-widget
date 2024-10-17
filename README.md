@@ -10,29 +10,96 @@ A helper function to create Reactive Visualization Widgets
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>vegaSelected test</title>
+    <title>Reactive Widget helper function test</title>
   </head>
   <body>
-    <h1>Vega Selected demo</h1>
+    <h1>Reactive Widget Helper Function</h1>
     <div id="target"></div>
     <div id="status"></div>
-    // 🧰 Add dependencies
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-selected"></script>
-    <!-- <script src="../dist/vegaSelected.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/reactive-widget"></script> -->
+    <script src="./Histogram.js"></script>
+    <script src="../dist/ReactiveWidget.js"></script>
 
     <script>
-      const spec = {...} // a parsed vega/vega-lite spec
-      
+      const BrushableHistogram = function (
+        data,
+        {
+          value = [],
+          x = (d) => d[0],
+          xLabel = "",
+          width = 600,
+          height = 300,
+          marginBottom = 30,
+          vertical = false,
+        } = {}
+      ) {
+        // ✅ Add here the code that creates your widget
+        let element = Histogram(data, {
+          x,
+          xLabel,
+          width,
+          height,
+          marginBottom,
+          vertical,
+        });
+
+        // 🧰 Enhance your html element with reactive value and event handling
+        let widget = ReactiveWidget(element, { value, showValue });
+
+        // Enhance the Histogram with a brush
+        function brushended(event) {
+          let selection = event.selection;
+          if (!event.sourceEvent || !selection) return;
+
+          const [x0, x1] = selection.map((d) => element._xS.invert(d));
+          widget.setValue(vertical ? [x1, x0] : [x0, x1]);
+        }
+        const brush = (vertical ? d3.brushY() : d3.brushX())
+          .extent([
+            [element._margin.left, element._margin.top],
+            [
+              element._width - element._margin.right,
+              element._height - element._margin.bottom,
+            ],
+          ])
+          .on("brush end", brushended);
+        const gBrush = d3.select(element).append("g").call(brush);
+
+        // 🧰 ShowValue will display the current internalValue brush position
+        function showValue() {
+          // ✅ Add here the code that updates the current interaction
+          const [x0, x1] = widget.value;
+          // Update the brush position
+          gBrush.call(
+            brush.move,
+            x1 > x0 ? (vertical ? [x1, x0] : [x0, x1]).map(element._xS) : null
+          );
+        }
+
+        showValue();
+
+        // 🧰 Finally return the html element
+        return widget;
+      };
+
       async function runtIt() {
-        // 🧰 Wrap your spec with vegaSelected
-        const myWidget = await vegaSelected(spec);
+        const cars = await d3.json(
+          "https://cdn.jsdelivr.net/npm/vega-datasets@2/data/cars.json"
+        );
+        const xAttr = "Horsepower";
+        const myWidget = BrushableHistogram(cars, {
+          x: (d) => d[xAttr],
+          xLabel: xAttr,
+          height: 200,
+          value: [12, 32], // initial position
+        });
 
         // 🧰 Listen to changes in the widget
         const onInput = (e) => {
-          console.log("do something with the current value", myWidget.value);          
+          console.log("Widget updated. value=", myWidget.value);
+          document.getElementById("status").innerHTML =
+            `Current Selection <pre>${JSON.stringify(myWidget.value, null, 2)}</pre>`;
         };
         myWidget.addEventListener("input", onInput);
         onInput();
@@ -45,5 +112,4 @@ A helper function to create Reactive Visualization Widgets
     </script>
   </body>
 </html>
-
 ``
