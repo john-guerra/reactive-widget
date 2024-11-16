@@ -1,5 +1,5 @@
 {
-  "name": "reactive-widget",
+  "name": "reactive-widget-helper",
   "version": "0.0.1",
   "description": "Helper function to create Reactive Visualization Widgets",
   "type": "module",

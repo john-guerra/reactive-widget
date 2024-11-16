@@ -1,8 +1,22 @@
 # reactive-widget
 
-A helper function to create Reactive Visualization Widgets
+A helper function to create [Reactive Visualization Widgets](https://johnguerra.co/reactiveWidgets), web components that work like inputs holding a *value* and using *input* events to trigger changes. Useful for creating interactive visualizations and connecting them with other widgets.
 
-## Example Usage
+To use it just pass it an html _element_ with your visualization, and an object with the initial value and a callback function for when the value changes. It will return a [reactive widget](https://johnguerra.co/reactiveWidgets) with a helper function *setValue* that you can call to update it's reactive value.
+
+```js
+// 🧰 Enhance your html element with reactive value and event handling
+let widget = ReactiveWidget(element, { value, showValue });
+
+// Then on an interaction
+...
+.on("click", () => {
+  // you can use setValue for triggering input events
+  widget.setValue(newVal)
+})
+```
+
+## Full Example Usage
 
 ```js
 <!doctype html>
@@ -17,9 +31,9 @@ A helper function to create Reactive Visualization Widgets
     <div id="target"></div>
     <div id="status"></div>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/reactive-widget"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/reactive-widget-helper"></script>
     <script src="./Histogram.js"></script>
-    <script src="../dist/ReactiveWidget.js"></script>
+    
 
     <script>
       const BrushableHistogram = function (
